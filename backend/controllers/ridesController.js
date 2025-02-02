@@ -126,3 +126,15 @@ exports.searchRides = catchAsync(async (req, res, next) => {
 
   res.status(200).json({ length: buses.length, success: true, data: buses });
 });
+
+
+exports.getRide = catchAsync(async (req, res, next) => {
+  const bus = await Bus.findById(req.params.id);
+  if (!bus) {
+    return next(new AppError("No bus found with that ID", 404));
+  }
+  res.status(200).json({
+    status: "success",
+    data: bus,
+  });
+})

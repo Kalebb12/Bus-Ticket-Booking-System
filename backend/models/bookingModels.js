@@ -64,12 +64,21 @@ bookingSchema.pre("save", async function (next) {
       );
     }
 
+    // Step 3: Calculate and store total price
+    this.totalPrice = ride.pricePerSeat * this.seatsBooked;
+
+    // If it's an update (not a new booking)
+    if (!this.isNew) {
+      const originalBooking = await Bookings.findById(this._id).session(session);
+      if (originalBooking) {
+        // Restore the original number of seats first
+        ride.availableSeats += originalBooking.seatsBooked;
+      }
+    }
+
     // Step 2: Update the availableSeats
     ride.availableSeats -= this.seatsBooked;
     await ride.save({ session });
-
-    // Step 3: Calculate and store total price
-    this.totalPrice = ride.pricePerSeat * this.seatsBooked;
 
     // Step 4: Commit the transaction
     await session.commitTransaction();

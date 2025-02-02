@@ -1,21 +1,21 @@
 const express = require("express");
 const ridesController = require("../controllers/ridesController");
 const protect = require("../middlewares/protectMiddleware");
-const restrictToAdmin = require("../middlewares/restrictAccessMiddleware");
+const restrictTo = require("../middlewares/restrictAccessMiddleware");
 
 const router = express.Router();
 
 router
   .route("/")
   .get(ridesController.availableRides)
-  .post(protect, restrictToAdmin, ridesController.createRide);
+  .post(protect, restrictTo(['admin']), ridesController.createRide);
 
 router
   .route("/:id")
-  .patch(protect, restrictToAdmin, ridesController.cancelRide)
-  .put(protect, restrictToAdmin, ridesController.updateRide)
+  .get(ridesController.getRide)
+  .patch(protect, restrictTo(['admin']), ridesController.cancelRide)
+  .put(protect, restrictTo(['admin']), ridesController.updateRide);
 
-  router
-  .route("/search")
-  .get(ridesController.searchRides);
+router.route("/search").get(ridesController.searchRides);
+
 module.exports = router;
