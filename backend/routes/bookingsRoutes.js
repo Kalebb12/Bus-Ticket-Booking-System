@@ -2,6 +2,7 @@ const express = require("express");
 const protect = require("../middlewares/protectMiddleware");
 const bookingsController = require("../controllers/bookingsController");
 const restrictTo = require("../middlewares/restrictAccessMiddleware");
+const protectBooking = require("../middlewares/protectBooking");
 const router = express.Router();
 
 router
@@ -12,6 +13,7 @@ router
 router
   .route("/:id")
   .get(bookingsController.getBooking)
-  .patch(protect, bookingsController.updateBooking);
+  .patch(protect ,protectBooking, bookingsController.updateBooking);
 
 module.exports = router;
+
