@@ -1,5 +1,5 @@
 const catchAsync = require("../utils/catchAsync");
-const Bus = require("../models/rideModel");
+const Rides = require("../models/rideModel");
 const AppError = require("../utils/appError");
 
 exports.availableRides = catchAsync(async (req, res) => {
@@ -47,15 +47,15 @@ exports.createRide = catchAsync(async (req, res) => {
 });
 
 exports.cancelRide = catchAsync(async (req, res, next) => {
-  const bus = await Bus.findById(req.params.id);
+  const ride = await Rides.findById(req.params.id);
 
-  if (!bus) {
-    next(new AppError("No bus found with that ID", 404));
+  if (!ride) {
+    next(new AppError("No ride found with that ID", 404));
   }
 
-  // Mark the bus as canceled
-  bus.status = "canceled";
-  await bus.save();
+  // Mark the ride as canceled
+  ride.status = "canceled";
+  await ride.save();
 
   // Optionally, update all bookings for this bus
   //  await Booking.updateMany({ busId: bus._id }, { $set: { status: 'canceled' } });
@@ -88,19 +88,19 @@ exports.updateRide = catchAsync(async (req, res, next) => {
     }
   });
 
-  // Update the bus document
-  const updatedBus = await Bus.findByIdAndUpdate(id, updates, {
+  // Update the ride document
+  const updatedRide = await Rides.findByIdAndUpdate(id, updates, {
     new: true,
     runValidators: true,
   });
 
-  if (!updatedBus) {
-    return res.status(404).json({ message: "Bus not found" });
+  if (!updatedRide) {
+    return res.status(404).json({ message: "Ride not found" });
   }
 
   res.status(200).json({
     status: "success",
-    data: updatedBus,
+    data: updatedRide,
   });
 });
 
@@ -113,28 +113,28 @@ exports.searchRides = catchAsync(async (req, res, next) => {
     );
   }
 
-  const buses = await Bus.find({
+  const rides = await Rides.find({
     "route.from": from.toUpperCase(),
     "route.to": to.toUpperCase(),
-    status: "active", // Exclude canceled/completed buses
-    availableSeats: { $gt: 0 }, // Only show buses with available seats
+    status: "active", // Exclude canceled/completed rides
+    availableSeats: { $gt: 0 }, // Only show rides with available seats
   });
 
-  if (!buses.length) {
-    return next(new AppError("No buses found for the specified route", 404));
+  if (!rides.length) {
+    return next(new AppError("No rides found for the specified route", 404));
   }
 
-  res.status(200).json({ length: buses.length, success: true, data: buses });
+  res.status(200).json({ length: rides.length, success: true, data: rides });
 });
 
 
 exports.getRide = catchAsync(async (req, res, next) => {
-  const bus = await Bus.findById(req.params.id);
-  if (!bus) {
-    return next(new AppError("No bus found with that ID", 404));
+  const ride = await Rides.findById(req.params.id);
+  if (!ride) {
+    return next(new AppError("No ride found with that ID", 404));
   }
   res.status(200).json({
     status: "success",
-    data: bus,
+    data: ride,
   });
 })

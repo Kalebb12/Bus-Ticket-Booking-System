@@ -2,19 +2,44 @@ const User = require("../models/userModels");
 const bcrypt = require("bcryptjs");
 const createSignToken = require("../utils/createSignToken");
 const catchAsync = require("../utils/catchAsync");
+const jwt = require("jsonwebtoken");
+const sendEmail = require("../utils/sendEmail");
+const AppError = require("../utils/appError");
+const sendVerificationEmail = require("../templates/emailVerificationTemplate");
 
 // register controller
 exports.register = catchAsync(async (req, res, next) => {
+  const BASE_URL =
+    process.env.NODE_ENV !== "production"
+      ? process.env.DEV_URL
+      : process.env.PROD_URL4;
+
   const { username, email, password } = req.body;
   const newUser = await User.create({ username, email, password });
   //  Create a token for the user
-  const token = createSignToken(newUser._id);
+  const token = createSignToken(newUser._id,"30m");
+  newUser.verificationToken = token;
+  // newUser.verificationTokenExpiresIn = Date.now() + 3600000; // 1 hour
+  await newUser.save();
+
+  const template = sendVerificationEmail(username , `${BASE_URL}api/users/verify/${token}`)
+  
+  await sendEmail(
+    {
+      to: newUser.email,
+      subject: "Verify Account",
+      text: `Hi ${newUser.username}, you just registed your account.`,
+      html: template,
+    },
+    next
+  );
+
   // Send the token to the user in a cookie
-  res.cookie("token", token, {
-    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days expiration
-    secure: process.env.NODE_ENV === "production", // Only use HTTPS in production
-    httpOnly: true,
-  });
+  // res.cookie("token", token, {
+  //   maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days expiration
+  //   secure: process.env.NODE_ENV === "production", // Only use HTTPS in production
+  //   httpOnly: true,
+  // });
 
   res.status(201).json({
     status: "success",
@@ -37,10 +62,10 @@ exports.login = catchAsync(async (req, res) => {
 
   const user = await User.findOne({ email }).select("+password");
 
-  if (!user) {
+  if (!user || !user.isVerified) {
     return res.status(401).json({
       status: "fail",
-      message: "Invalid email",
+      message: "Invalid Credentials",
     });
   }
 
@@ -49,7 +74,7 @@ exports.login = catchAsync(async (req, res) => {
   if (!isMatch) {
     return res.status(401).json({
       status: "fail",
-      message: "Invalid password",
+      message: "Invalid Credentials",
     });
   }
 
@@ -98,8 +123,7 @@ exports.profile = catchAsync(async (req, res) => {
 // update profile controller
 exports.updateProfile = catchAsync(async (req, res) => {
   const { username, email } = req.body;
-  const user = await User.findById(req.userId)
-  
+  const user = await User.findById(req.userId);
 
   if (!user) {
     return res.status(404).json({
@@ -116,5 +140,42 @@ exports.updateProfile = catchAsync(async (req, res) => {
   });
 });
 
+exports.verifyEmail = catchAsync(async (req, res, next) => {
+  let token = req.params.token;
+  if (!token) {
+    return next(new AppError("No token provided", 400));
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.id);
+    if (!user) {
+      return next(new AppError("User not found", 404));
+    }
+
+    user.isVerified = true;
+    user.verificationToken = undefined;
+    token = createSignToken(user._id)
+    await user.save();
+  } catch (error) {
+    return next(new AppError("Invalid token. Please log in again.", 401));
+  }
+
+
+  // Send the token to the user in a cookie
+  res.cookie("token", token, {
+    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days expiration
+    secure: process.env.NODE_ENV === "production", // Only use HTTPS in production
+    httpOnly: true,
+  });
+
+  // redirect to homepage
+  // res.redirect('')
+  res.status(200).json({
+    status: "success",
+    message: "Email verified successfully",
+    token
+  });
+});
 
 // todo: add update password controller and email confimation

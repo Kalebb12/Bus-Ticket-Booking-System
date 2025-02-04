@@ -1,5 +1,5 @@
 const express = require("express");
-const protect = require("../middlewares/protectMiddleware");
+const isAuthenticated = require("../middlewares/protectMiddleware");
 const bookingsController = require("../controllers/bookingsController");
 const restrictTo = require("../middlewares/restrictAccessMiddleware");
 const protectBooking = require("../middlewares/protectBooking");
@@ -7,13 +7,15 @@ const router = express.Router();
 
 router
   .route("/")
-  .post(protect, bookingsController.createBookings)
-  .get(protect, protect, bookingsController.getUserBookings);
+  .post(isAuthenticated, bookingsController.createBookings)
+  .get(isAuthenticated, bookingsController.getUserBookings);
 
 router
   .route("/:id")
-  .get(bookingsController.getBooking)
-  .patch(protect ,protectBooking, bookingsController.updateBooking);
+  .get(isAuthenticated,protectBooking ,bookingsController.getBooking)
+  .patch(isAuthenticated, protectBooking, bookingsController.updateBooking);
 
+
+// .route("/all")
+// .get(isAuthenticated, restrictTo(["admin"]), bookingsController.getBookings);
 module.exports = router;
-

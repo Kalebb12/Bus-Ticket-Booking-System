@@ -1,14 +1,9 @@
-const User = require("../models/userModels");
 const AppError = require("../utils/appError");
 const restrictTo = (arrayOfRoles) => {
   return async function (req, res, next) {
-    const { userId } = req;
-    const user = await User.findById(userId);
-    if (!user) {
-      return next(new AppError("User not found", 404));
-    }
+    const { userRole } = req;
 
-    if (arrayOfRoles.includes(user.role)) {
+    if (arrayOfRoles.includes(userRole)) {
       return next();
     }
 

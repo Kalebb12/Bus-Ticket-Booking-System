@@ -13,11 +13,13 @@ module.exports = catchAsync(
     try {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       const user = await User.findById(decoded.id)
-      if (!user) {
-        return next(new appError("User not found", 404));
+      if (!user || !user.isVerified) {
+        return next(new appError("Invalid Token ,check user email to verify user's account", 404));
       }
       req.userId = user._id;
       req.userRole = user.role;
+      req.userEmail = user.email;
+      req.userName = user.username;
   
       next();
     } catch (error) {
