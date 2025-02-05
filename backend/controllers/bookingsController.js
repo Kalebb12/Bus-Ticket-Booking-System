@@ -12,70 +12,80 @@ const BASE_URL =
     ? process.env.DEV_URL
     : process.env.PROD_URL4;
 
-exports.createBookings = catchAsync(async (req, res, next) => {
+exports.createBookings =  catchAsync(async (req, res, next) => {
   const { rideId, seatsBooked, notes } = req.body;
-  const ride = await Ride.findById(rideId);
-  if (!ride) {
-    return next(new AppError("No ride found with that ID", 404));
-  }
+  
+  // 1. Find the ride and validate constraints
+  const ride = await Ride.findOne({
+    _id: rideId,
+    status: { $nin: ["canceled", "completed"] },
+    schedule: { $gte: new Date() },
+  });
+
+  if (!ride) return next(new AppError("No ride found with that ID", 404));
+
   if (ride.availableSeats < seatsBooked) {
     return next(new AppError("Not enough seats available", 400));
   }
 
-  const booking = await Bookings.create({
+  // 2. Create booking document (do not save yet)
+  const booking = new Bookings({
     user: req.userId,
     ride: rideId,
     seatsBooked,
     notes,
   });
 
-  await booking.save({
-    isNew: true,
-  });
-  const qrCode = await generateQRCode(booking._id.toString());
-  const qrCodeBuffer = await generateQRCodeBuffer(booking._id.toString());
+  // 3. Generate QR code buffer asynchronously
+  const qrCodeBufferPromise = generateQRCodeBuffer(booking._id.toString());
 
-  booking.qrCode = qrCode;
-  await booking.save({
-    isNew: true,
-  });
+  // 5. Save booking first before QR code is ready
+  await booking.save();
 
-  // Populate the related user and ride fields
+  // 6. Wait for QR Code buffer generation
+  const qrCodeBuffer = await qrCodeBufferPromise;
+  booking.qrCode = `data:image/png;base64,${qrCodeBuffer.toString("base64")}`;
+
+  // 7. Save booking with QR Code
+  await booking.save();
+
+  // 8. Populate user and ride details
   const populatedBooking = await booking.populate([
-    { path: "user", select: "username email" }, // Populate user details (adjust fields as needed)
-    { path: "ride", select: "name schedule route" }, // Populate ride details (adjust fields as needed)
+    { path: "user", select: "username email" },
+    { path: "ride", select: "name schedule route" },
   ]);
 
-  console.log(populatedBooking);
-
-  await sendEmail(
-    {
-      to: req.userEmail,
-      subject: "Tickect Booked Successfully",
-      text: `Your ticket has been booked for ride: ${ride.name} from ${ride.route.from} to ${ride.route.to}.`,
-      html: sendTicketConfirmationEmail(populatedBooking),
-      attachments: [{
-        filename: "ticket-qrcode.png",
-        content: qrCodeBuffer, // Attach buffer
-        encoding: "base64",
-        cid: "qrcodecid", // Content-ID (for embedding in email)
-      }],
-    },
-    next
-  ); 
-  // Populate ride and user details for the ticket
-  // const populatedBooking = await Booking.findById(booking._id)
-  //   .populate("user", "email")
-  //   .populate("ride", "name route.from route.to");
-
-  // Send the ticket to the user's email
-  // await sendTicket(populatedBooking.user.email, qrCode, populatedBooking);
-
+  // 9. Respond to user immediately (do not wait for email)
   res.status(201).json({
     status: "success",
-    data: booking,
+    data: populatedBooking,
   });
+
+  // 10. Send email asynchronously
+  setImmediate(async () => {
+    try {
+      await sendEmail({
+        to: req.userEmail,
+        subject: "Ticket Booked Successfully",
+        text: `Your ticket has been booked for ride: ${ride.name} from ${ride.route.from} to ${ride.route.to}.`,
+        html: sendTicketConfirmationEmail(populatedBooking),
+        attachments: [{
+          filename: "ticket-qrcode.png",
+          content: qrCodeBuffer,
+          encoding: "base64",
+          cid: "qrcodecid",
+        }],
+      });
+    } catch (error) {
+      console.error("Error sending email:", error.message);
+      return next(new AppError(error.message , 404));
+    }
+  });
+
+  // 11. Save ride update in the background
+  await rideSavePromise;
 });
+
 
 exports.allBookings = catchAsync(async (req, res, next) => {
   // get all bookings

@@ -2,6 +2,7 @@ const jwt = require("jsonwebtoken");
 const appError = require("../utils/appError");
 const User = require("../models/userModels");
 const catchAsync = require("../utils/catchAsync");
+const isJwtExpired = require("../utils/istokenExpired");
 module.exports = catchAsync(
   async(req, res, next) => {
     const token = req.cookies.token;
@@ -23,7 +24,7 @@ module.exports = catchAsync(
   
       next();
     } catch (error) {
-      return next(new appError("Invalid token. Please log in again.", 401));
+      return next(new appError("Invalid token", 401));
     }
   }
 )

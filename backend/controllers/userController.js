@@ -6,24 +6,27 @@ const jwt = require("jsonwebtoken");
 const sendEmail = require("../utils/sendEmail");
 const AppError = require("../utils/appError");
 const sendVerificationEmail = require("../templates/emailVerificationTemplate");
+const isTokenExpired = require("../utils/istokenExpired");
 
+const BASE_URL =
+  process.env.NODE_ENV !== "production"
+    ? process.env.DEV_URL
+    : process.env.PROD_URL4;
 // register controller
 exports.register = catchAsync(async (req, res, next) => {
-  const BASE_URL =
-    process.env.NODE_ENV !== "production"
-      ? process.env.DEV_URL
-      : process.env.PROD_URL4;
-
   const { username, email, password } = req.body;
   const newUser = await User.create({ username, email, password });
   //  Create a token for the user
-  const token = createSignToken(newUser._id,"30m");
+  const token = createSignToken(newUser._id, "30m");
   newUser.verificationToken = token;
   // newUser.verificationTokenExpiresIn = Date.now() + 3600000; // 1 hour
   await newUser.save();
 
-  const template = sendVerificationEmail(username , `${BASE_URL}api/users/verify/${token}`)
-  
+  const template = sendVerificationEmail(
+    username,
+    `${BASE_URL}api/users/verify/${token}`
+  );
+
   await sendEmail(
     {
       to: newUser.email,
@@ -155,12 +158,11 @@ exports.verifyEmail = catchAsync(async (req, res, next) => {
 
     user.isVerified = true;
     user.verificationToken = undefined;
-    token = createSignToken(user._id)
+    token = createSignToken(user._id);
     await user.save();
   } catch (error) {
-    return next(new AppError("Invalid token. Please log in again.", 401));
+    return next(new AppError("Invalid token", 401));
   }
-
 
   // Send the token to the user in a cookie
   res.cookie("token", token, {
@@ -174,7 +176,36 @@ exports.verifyEmail = catchAsync(async (req, res, next) => {
   res.status(200).json({
     status: "success",
     message: "Email verified successfully",
-    token
+    token,
+  });
+});
+
+exports.resendToken = catchAsync(async (req, res, next) => {
+  const { email } = req.body;
+  const user = await User.findOne({ email });
+
+  if (!user) return next(new AppError("User not found", 404));
+  if (user.isVerified) return next(new AppError("User already verified", 400));
+
+  // Generate new verification token
+  const token = createSignToken(user._id, "30m");
+
+  // Update user document efficiently
+  await User.updateOne({ _id: user._id }, { verificationToken: token });
+
+  // Generate email verification template
+  const template = sendVerificationEmail(user.username, `${BASE_URL}api/users/verify/${token}`);
+
+  // Send verification email
+  await sendEmail({
+    to: user.email,
+    subject: "Verify Your Account",
+    html: template,
+  });
+
+  res.status(200).json({
+    status: "success",
+    message: "Verification email sent successfully",
   });
 });
 

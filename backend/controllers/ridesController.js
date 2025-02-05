@@ -4,14 +4,14 @@ const AppError = require("../utils/appError");
 
 exports.availableRides = catchAsync(async (req, res) => {
   // get rides with status not canceled or completed and schedule is greater than current date
-  const buses = await Bus.find({
+  const rides = await Rides.find({
     status: { $nin: ["canceled", "completed"] },
     schedule: { $gte: new Date() },
   }).select("-__v");
   res.status(200).json({
     status: "success",
-    length: buses.length,
-    data: buses,
+    length: rides.length,
+    data: rides,
   });
 });
 
@@ -28,7 +28,7 @@ exports.createRide = catchAsync(async (req, res) => {
     parkingAddress,
     parkingCoordinates,
   } = req.body;
-  const newBus = await Bus.create({
+  const newRide = await Rides.create({
     name,
     plateNumber,
     route,
@@ -42,17 +42,16 @@ exports.createRide = catchAsync(async (req, res) => {
   });
   res.status(201).json({
     status: "success",
-    data: newBus,
+    data: newRide,
   });
 });
 
 exports.cancelRide = catchAsync(async (req, res, next) => {
   const ride = await Rides.findById(req.params.id);
-
   if (!ride) {
-    next(new AppError("No ride found with that ID", 404));
+    return next(new AppError("No ride found with that ID", 404));
   }
-
+  
   // Mark the ride as canceled
   ride.status = "canceled";
   await ride.save();
