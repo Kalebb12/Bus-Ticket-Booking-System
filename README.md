@@ -48,13 +48,35 @@ npm install
 ### 3️⃣ Configure environment variables
 Create a `.env` file in the root directory and add:
 ```env
-PORT=5000
-MONGO_URI=your_mongodb_connection_string
-JWT_SECRET=your_jwt_secret
-EMAIL_HOST=smtp.example.com
-EMAIL_USER=your_email@example.com
-EMAIL_PASS=your_email_password
-BASE_URL=http://localhost:5000/
+# .env.example
+
+# The port your app will run on
+PORT=3000
+
+# Database URL for your app (e.g., MongoDB, PostgreSQL)
+DATABASE_PASSWORD =  your-database-password
+DATABASE= mongodb://localhost:27017/your-database-name<PASSWORD>@cluster0.ehtb4.mongodb.net/your_collection?retryWrites=true&w=majority&appName=Cluster0
+
+# Your Stripe API secret key (for payments)
+STRIPE_SECRET_KEY=your-stripe-secret-key-here
+
+# JWT secret for token signing
+JWT_SECRET = your-jwt-secret-key-here
+JWT_EXPIRES_IN = 7d
+
+# (Optional) Environment settings (development, production, etc.)
+NODE_ENV= development || production
+
+# node mailer 
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_USER=your-email@gmail.com
+EMAIL_PASS=your-email-password
+EMAIL_FROM="Bus Ticketing <your-email@gmail.com>"
+
+# domain url
+PROD_URL = 'http://your-website.com'
+DEV_URL ="localhost:3000" // your port
 ```
 
 ### 4️⃣ Start the server
