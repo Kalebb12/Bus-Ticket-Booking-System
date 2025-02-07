@@ -2,9 +2,9 @@ const Bookings = require("../models/bookingModels");
 const Ride = require("../models/rideModel");
 const AppError = require("../utils/appError");
 const catchAsync = require("../utils/catchAsync");
-const generateQRCodeBuffer = require("../utils/generateQRCodeBuffer");
 const sendTicketConfirmationEmail = require("../templates/emailTickets");
 const sendEmail = require("../utils/sendEmail");
+const  generateQRCodeBuffer = require('../utils/generateQrCodeBuffer')
 
 const BASE_URL =
   process.env.NODE_ENV !== "production"
