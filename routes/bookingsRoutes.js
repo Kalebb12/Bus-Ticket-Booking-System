@@ -16,6 +16,7 @@ router
   .patch(isAuthenticated, protectBooking, bookingsController.updateBooking);
 
 
-// .route("/all")
-// .get(isAuthenticated, restrictTo(["admin"]), bookingsController.getBookings);
+router.get("/verify/:bookingId",bookingsController.verifyBooking);
+
+
 module.exports = router;

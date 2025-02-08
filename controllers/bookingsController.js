@@ -9,7 +9,7 @@ const  generateQRCodeBuffer = require('../utils/generateQrCodeBuffer')
 const BASE_URL =
   process.env.NODE_ENV !== "production"
     ? process.env.DEV_URL
-    : process.env.PROD_URL4;
+    : process.env.PROD_URL;
 
 exports.createBookings =  catchAsync(async (req, res, next) => {
   const { rideId, seatsBooked, notes } = req.body;
@@ -36,7 +36,8 @@ exports.createBookings =  catchAsync(async (req, res, next) => {
   });
 
   // 3. Generate QR code buffer asynchronously
-  const qrCodeBufferPromise = generateQRCodeBuffer(booking._id.toString());
+  const verificationUrl = `${BASE_URL}api/bookings/verify/${booking._id}`
+  const qrCodeBufferPromise = generateQRCodeBuffer(verificationUrl);
 
   // 5. Save booking first before QR code is ready
   await booking.save();
@@ -150,3 +151,39 @@ exports.updateBooking = catchAsync(async (req, res, next) => {
     data: booking,
   });
 });
+
+
+exports.verifyBooking = catchAsync(async (req, res, next) => {
+  const { bookingId } = req.params;
+
+  // Find the booking by ID
+  const booking = await Bookings.findById(bookingId).populate("ride user", "name route username email");
+
+  if (!booking) {
+    return next(new AppError("Invalid or expired ticket", 404));
+  }
+
+  // Check if the ride is still valid
+  if (booking.ride.schedule < new Date()) {
+    return next(new AppError("Ticket expired, ride already departed", 400));
+  }
+
+  // If tickets are one-time use, check and mark as used
+  if (booking.isUsed) {
+    return next(new AppError("Ticket already used", 400));
+  }
+
+  // Respond with booking details
+  res.status(200).json({
+    status: "success",
+    message: "Ticket verified successfully",
+    data: {
+      bookingId: booking._id,
+      ride: booking.ride.name,
+      route: `${booking.ride.route.from} to ${booking.ride.route.to}`,
+      user: booking.user.username,
+      email: booking.user.email,
+      seatsBooked: booking.seatsBooked,
+    },
+  });
+})

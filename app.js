@@ -6,10 +6,12 @@ const userRouter = require("./routes/userRoutes");
 const ridesRouter = require("./routes/ridesRoutes");
 const bookingRouter = require("./routes/bookingsRoutes");
 const adminRouter = require("./routes/adminRoutes");
+const cors = require('cors')
 const globalErrorHandler = require("./controllers/errorController");
 
 dotenv.config();
 const app = express();
+app.use(cors())
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }))
 app.use(cookieParser());
