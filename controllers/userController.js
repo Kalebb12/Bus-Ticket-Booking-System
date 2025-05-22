@@ -85,7 +85,8 @@ exports.login = catchAsync(async (req, res) => {
   // Send the token to the user in a cookie
   res.cookie("token", token, {
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days expiration
-    secure: process.env.NODE_ENV === "production", // Only use HTTPS in production
+    //secure: process.env.NODE_ENV === "production", // Only use HTTPS in production
+    secure:false,
     httpOnly: true,
   });
 
