@@ -209,4 +209,23 @@ exports.resendToken = catchAsync(async (req, res, next) => {
   });
 });
 
+exports.validateToken = catchAsync(async (req,res,next) => {
+  const { token } = req.cookies;
+  if (!token) return next(new AppError("No token provided", 400));
+
+  const isExpired = isTokenExpired(token);
+  if (isExpired) return next(new AppError("Token expired", 400));
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.id);
+    if (!user) return next(new AppError("User not found", 404));
+    res.status(200).json({
+      status: "success",
+      message: "Token is valid",
+    });
+  } catch (error) {
+    return next(new AppError("Invalid token", 401));
+  }
+})
 // todo: add update password controller and email confimation
